@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server';
 
+async function generateContentWithModel(modelName: string, prompt: string, apiKey: string) {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
@@ -12,23 +27,40 @@ export async function POST(req: Request) {
       );
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      }
-    );
+    let response: Response | null = null;
+    let success = false;
+    let lastError: string = '';
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error?.message || 'Failed to generate content from Gemini API';
-      return NextResponse.json({ error: errorMessage }, { status: response.status });
+    // Model list to try in order of preference (Flash -> Flash Lite -> Pro)
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`Querying Gemini model: ${modelName}...`);
+        const res = await generateContentWithModel(modelName, prompt, apiKey);
+        
+        if (res.ok) {
+          response = res;
+          success = true;
+          console.log(`Successfully generated content using: ${modelName}`);
+          break;
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          const errMsg = errorData.error?.message || res.statusText || 'Unknown error';
+          lastError = `${modelName} failed (${res.status}): ${errMsg}`;
+          console.warn(lastError);
+        }
+      } catch (e: any) {
+        lastError = `Network error calling ${modelName}: ${e.message || e}`;
+        console.error(lastError);
+      }
+    }
+
+    if (!success || !response) {
+      return NextResponse.json(
+        { error: `All Gemini models failed. Last error: ${lastError}` },
+        { status: 500 }
+      );
     }
 
     const data = await response.json();

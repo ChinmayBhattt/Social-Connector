@@ -59,40 +59,68 @@ export function useChat() {
       setNodes((prev) => [...prev, newNode]);
       setIsStreaming(true);
 
-      // Stream response character by character
-      let charIndex = 0;
-      streamTimerRef.current = setInterval(() => {
-        charIndex += 3; // 3 chars at a time for faster streaming
-        if (charIndex >= fullResponse.length) {
-          charIndex = fullResponse.length;
-          if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+      // Call Next.js API route to talk to Gemini
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to generate content from Gemini API');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const fullResponse = data.text || '';
+          
+          // Stream response character by character
+          let charIndex = 0;
+          streamTimerRef.current = setInterval(() => {
+            charIndex += 4; // 4 chars at a time for fast response rendering
+            if (charIndex >= fullResponse.length) {
+              charIndex = fullResponse.length;
+              if (streamTimerRef.current) clearInterval(streamTimerRef.current);
 
-          // Finalize node + add assistant message
+              setNodes((prev) =>
+                prev.map((n) =>
+                  n.id === nodeId ? { ...n, response: fullResponse, isStreaming: false } : n
+                )
+              );
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: msgId(),
+                  role: 'assistant',
+                  content: fullResponse,
+                  timestamp: new Date(),
+                },
+              ]);
+              setIsStreaming(false);
+            } else {
+              setNodes((prev) =>
+                prev.map((n) =>
+                  n.id === nodeId
+                    ? { ...n, response: fullResponse.slice(0, charIndex) }
+                    : n
+                )
+              );
+            }
+          }, 8);
+        })
+        .catch((err) => {
+          console.error('Gemini error:', err);
+          const errorMsg = `Error: ${err.message || 'Failed to connect to Gemini API. Please make sure your GEMINI_API_KEY is correct.'}`;
           setNodes((prev) =>
             prev.map((n) =>
-              n.id === nodeId ? { ...n, response: fullResponse, isStreaming: false } : n
+              n.id === nodeId ? { ...n, response: errorMsg, isStreaming: false } : n
             )
           );
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: msgId(),
-              role: 'assistant',
-              content: fullResponse,
-              timestamp: new Date(),
-            },
-          ]);
           setIsStreaming(false);
-        } else {
-          setNodes((prev) =>
-            prev.map((n) =>
-              n.id === nodeId
-                ? { ...n, response: fullResponse.slice(0, charIndex) }
-                : n
-            )
-          );
-        }
-      }, 12);
+        });
     },
     [isStreaming, nodes.length]
   );
