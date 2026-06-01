@@ -1,6 +1,22 @@
-import { NextResponse } from 'next/server';
+import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
 
-async function generateContentWithModel(modelName: string, prompt: string, apiKey: string) {
+async function generateContentWithModel(
+  modelName: string,
+  prompt: string,
+  apiKey: string,
+  systemPrompt?: string
+) {
+  const contents = [{ role: 'user', parts: [{ text: prompt }] }];
+
+  const body: Record<string, unknown> = { contents };
+
+  // Inject system instruction if available
+  if (systemPrompt) {
+    body.systemInstruction = {
+      parts: [{ text: systemPrompt }],
+    };
+  }
+
   return fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
     {
@@ -8,24 +24,28 @@ async function generateContentWithModel(modelName: string, prompt: string, apiKe
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
+      body: JSON.stringify(body),
     }
   );
 }
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, connectedPlatforms } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey || apiKey === 'your_api_key_here') {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Gemini API Key is not set. Please add your GEMINI_API_KEY in the .env file.' },
         { status: 500 }
       );
     }
+
+    // Build platform-aware system prompt
+    const platformIds: string[] = connectedPlatforms ?? [];
+    const systemPrompt = platformIds.length > 0
+      ? buildSystemPrompt(platformIds)
+      : undefined;
 
     let response: Response | null = null;
     let success = false;
@@ -37,8 +57,8 @@ export async function POST(req: Request) {
     for (const modelName of modelsToTry) {
       try {
         console.log(`Querying Gemini model: ${modelName}...`);
-        const res = await generateContentWithModel(modelName, prompt, apiKey);
-        
+        const res = await generateContentWithModel(modelName, prompt, apiKey, systemPrompt);
+
         if (res.ok) {
           response = res;
           success = true;
@@ -50,14 +70,15 @@ export async function POST(req: Request) {
           lastError = `${modelName} failed (${res.status}): ${errMsg}`;
           console.warn(lastError);
         }
-      } catch (e: any) {
-        lastError = `Network error calling ${modelName}: ${e.message || e}`;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        lastError = `Network error calling ${modelName}: ${msg}`;
         console.error(lastError);
       }
     }
 
     if (!success || !response) {
-      return NextResponse.json(
+      return Response.json(
         { error: `All Gemini models failed. Last error: ${lastError}` },
         { status: 500 }
       );
@@ -65,9 +86,24 @@ export async function POST(req: Request) {
 
     const data = await response.json();
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    return NextResponse.json({ text: generatedText });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Try to parse structured JSON from the response
+    let structured = null;
+    try {
+      // Look for JSON in the response (Gemini might wrap it in markdown code blocks)
+      const jsonMatch = generatedText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : generatedText.trim();
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.platforms && Array.isArray(parsed.platforms)) {
+        structured = parsed;
+      }
+    } catch {
+      // Not structured JSON — that's fine, return raw text
+    }
+
+    return Response.json({ text: generatedText, structured });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }

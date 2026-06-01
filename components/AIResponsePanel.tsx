@@ -3,13 +3,120 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Icon from './Icon';
 import SocialIcon from './SocialIcon';
-import type { CanvasNode } from '@/lib/types';
+import type { CanvasNode, PlatformContent } from '@/lib/types';
 
 type AIResponsePanelProps = {
   nodes: CanvasNode[];
   onRemoveNode: (id: string) => void;
   isStreaming: boolean;
 };
+
+function PlatformCard({ platform }: { platform: PlatformContent }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    let textToCopy = platform.content;
+    if (platform.caption) {
+      textToCopy += `\n\n${platform.caption}`;
+    }
+    if (platform.hashtags && platform.hashtags.length > 0) {
+      textToCopy += `\n\n${platform.hashtags.map(t => `#${t}`).join(' ')}`;
+    }
+    if (platform.cta) {
+      textToCopy += `\n\n${platform.cta}`;
+    }
+    
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const charCount = platform.charCount ?? platform.content.length;
+  const isOverLimit = platform.charLimit ? charCount > platform.charLimit : false;
+  const isNearLimit = platform.charLimit ? charCount > platform.charLimit - 40 : false;
+  
+  const charLimitClass = isOverLimit 
+    ? 'char-limit-error' 
+    : isNearLimit 
+      ? 'char-limit-warning' 
+      : 'char-limit-normal';
+
+  return (
+    <div className="border border-white/[0.06] bg-white/[0.01] rounded-xl p-3.5 space-y-3 hover:bg-white/[0.03] transition-all">
+      {/* Card Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center p-1.5 shrink-0 border border-white/10">
+            <SocialIcon platform={platform.platformId} size={16} />
+          </div>
+          <span className="font-heading text-[12px] font-semibold text-on-surface uppercase tracking-wider">
+            {platform.platformName}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Character count */}
+          {platform.charLimit && (
+            <span className={`text-[10px] font-mono ${charLimitClass}`}>
+              {charCount}/{platform.charLimit}
+            </span>
+          )}
+          
+          {/* Copy Button */}
+          <button
+            onClick={handleCopy}
+            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-white/5 transition-all"
+            title="Copy content"
+          >
+            <Icon name={copied ? 'check' : 'content_copy'} size={14} className={copied ? 'text-emerald-500' : ''} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="space-y-2 select-text font-body text-[13px] text-on-surface-variant leading-relaxed">
+        {platform.title && (
+          <p className="font-semibold text-on-surface border-b border-white/[0.04] pb-1">
+            Title: {platform.title}
+          </p>
+        )}
+        <p className="whitespace-pre-wrap">{platform.content}</p>
+        {platform.caption && (
+          <div className="bg-white/[0.01] border-l-2 border-primary/40 pl-2.5 py-1 text-[12.5px] italic text-on-surface-variant/80">
+            {platform.caption}
+          </div>
+        )}
+        {platform.cta && (
+          <p className="text-[12px] font-medium text-primary">
+            📢 {platform.cta}
+          </p>
+        )}
+        {platform.description && (
+          <div className="text-[12px] text-on-surface-variant/70 border-t border-white/[0.04] pt-2 mt-2">
+            <strong className="text-[11px] uppercase tracking-wider block text-on-surface-variant/50 mb-1">Description:</strong>
+            <p className="whitespace-pre-wrap">{platform.description}</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Hashtags & Tags */}
+      {((platform.hashtags && platform.hashtags.length > 0) || (platform.tags && platform.tags.length > 0)) && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {platform.hashtags?.map((tag, idx) => (
+            <span key={idx} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">
+              #{tag}
+            </span>
+          ))}
+          {platform.tags?.map((tag, idx) => (
+            <span key={idx} className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-md font-medium">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AIResponsePanel({ nodes, onRemoveNode, isStreaming }: AIResponsePanelProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -212,10 +319,23 @@ export default function AIResponsePanel({ nodes, onRemoveNode, isStreaming }: AI
                   {/* Divider line */}
                   <div className="h-px bg-white/[0.05] my-3" />
 
-                  {/* Markdown AI Output */}
-                  <div className="text-[13.5px] leading-relaxed space-y-2 select-text custom-scrollbar">
+                  {/* Markdown AI Output or Per-Platform Cards */}
+                  <div className="text-[13.5px] leading-relaxed space-y-3.5 select-text custom-scrollbar">
                     {node.response ? (
-                      <div className="space-y-0 text-on-surface-variant">{formatResponse(node.response)}</div>
+                      node.structuredResponse ? (
+                        <div className="space-y-3.5">
+                          <p className="text-on-surface font-medium text-[13px] bg-primary/5 border border-primary/10 rounded-xl p-3 leading-relaxed">
+                            ✨ {node.structuredResponse.summary}
+                          </p>
+                          <div className="space-y-3.5">
+                            {node.structuredResponse.platforms.map((p) => (
+                              <PlatformCard key={p.platformId} platform={p} />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-0 text-on-surface-variant">{formatResponse(node.response)}</div>
+                      )
                     ) : (
                       <div className="flex items-center gap-2 text-on-surface-variant opacity-50 py-2">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
@@ -237,3 +357,4 @@ export default function AIResponsePanel({ nodes, onRemoveNode, isStreaming }: AI
     </div>
   );
 }
+

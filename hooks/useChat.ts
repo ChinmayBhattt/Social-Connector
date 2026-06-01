@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import type { CanvasNode, Message, SocialPlatform } from '@/lib/types';
-import { pickResponse } from '@/lib/mock-responses';
+import { useState, useCallback, useRef } from 'react';
+import type { CanvasNode, Message, SocialPlatform, StructuredAIResponse } from '@/lib/types';
 
 let nodeIdCounter = 0;
 let msgIdCounter = 0;
@@ -21,11 +20,9 @@ export function useChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const streamTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-
-
   /** Send a message and create a streaming AI node */
   const sendMessage = useCallback(
-    (prompt: string, canvasCenter: { x: number; y: number }) => {
+    (prompt: string, canvasCenter: { x: number; y: number }, connectedPlatformIds?: string[]) => {
       if (!prompt.trim() || isStreaming) return;
 
       // Add user message to history
@@ -36,7 +33,6 @@ export function useChat() {
         timestamp: new Date(),
       };
 
-      const fullResponse = pickResponse(prompt);
       const nodeId = uid('node');
 
       // Offset each new node slightly so they don't stack
@@ -65,7 +61,10 @@ export function useChat() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt,
+          connectedPlatforms: connectedPlatformIds ?? [],
+        }),
       })
         .then(async (res) => {
           if (!res.ok) {
@@ -76,7 +75,8 @@ export function useChat() {
         })
         .then((data) => {
           const fullResponse = data.text || '';
-          
+          const structured: StructuredAIResponse | null = data.structured || null;
+
           // Stream response character by character
           let charIndex = 0;
           streamTimerRef.current = setInterval(() => {
@@ -87,7 +87,9 @@ export function useChat() {
 
               setNodes((prev) =>
                 prev.map((n) =>
-                  n.id === nodeId ? { ...n, response: fullResponse, isStreaming: false } : n
+                  n.id === nodeId
+                    ? { ...n, response: fullResponse, isStreaming: false, structuredResponse: structured ?? undefined }
+                    : n
                 )
               );
               setMessages((prev) => [

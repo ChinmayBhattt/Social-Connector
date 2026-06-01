@@ -9,18 +9,33 @@ import HistoryPanel from '@/components/HistoryPanel';
 import TemplatesPanel from '@/components/TemplatesPanel';
 import AddAssetsPanel from '@/components/AddAssetsPanel';
 import AIResponsePanel from '@/components/AIResponsePanel';
+import ConnectedAppsBar from '@/components/ConnectedAppsBar';
+import ConnectionFlowModal from '@/components/ConnectionFlowModal';
 import { useCanvas } from '@/hooks/useCanvas';
 import { useChat } from '@/hooks/useChat';
+import { useConnections } from '@/hooks/useConnections';
+import { SOCIAL_PLATFORMS } from '@/lib/platforms';
 import type { SocialPlatform } from '@/lib/types';
 
 export default function HomePage() {
   const canvas = useCanvas();
   const chat = useChat();
+  const {
+    connections,
+    connectedPlatformIds,
+    getConnection,
+    connectPlatform,
+    disconnectPlatform,
+    connectWithApiKey,
+  } = useConnections();
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(false);
-  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+
+  // Connection flow modal state
+  const [modalPlatform, setModalPlatform] = useState<SocialPlatform | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   /** Focus the chat input */
   const focusChatInput = useCallback(() => {
@@ -33,11 +48,9 @@ export default function HomePage() {
     setAssetsOpen(true);
   }, []);
 
-  /** Connect a social platform */
-  const handleConnectPlatform = useCallback(
+  /** Trigger node generation and AI notification once connected */
+  const addPlatformNodeAndNotify = useCallback(
     (platform: SocialPlatform) => {
-      setConnectedPlatforms((prev) => [...prev, platform.id]);
-
       // Calculate radial position around centerpiece (0, 0)
       const socialNodesCount = chat.nodes.filter((n) => n.type === 'social-connector').length;
       const angle = (socialNodesCount * 45) * (Math.PI / 180);
@@ -48,13 +61,68 @@ export default function HomePage() {
       // Add the social-connector node to the canvas
       chat.addSocialNode(platform, { x: posX, y: posY });
 
-      // Trigger the AI streaming response
+      // Trigger the AI streaming response with new platform included in the context
       const cx = typeof window !== 'undefined' ? window.innerWidth / 2 : 500;
       const cy = typeof window !== 'undefined' ? window.innerHeight / 2 : 400;
       const canvasPos = canvas.screenToCanvas(cx, cy);
-      chat.sendMessage(`Connect ${platform.name} — ${platform.description}`, canvasPos);
+      
+      const newConnectedIds = Array.from(new Set([...connectedPlatformIds, platform.id]));
+      chat.sendMessage(`Connect ${platform.name} — ${platform.description}`, canvasPos, newConnectedIds);
     },
-    [canvas, chat]
+    [canvas, chat, connectedPlatformIds]
+  );
+
+  /** Open connection flow modal when clicking asset */
+  const handleSelectPlatform = useCallback(
+    (platform: SocialPlatform) => {
+      setModalPlatform(platform);
+      setModalOpen(true);
+      setAssetsOpen(false);
+    },
+    []
+  );
+
+  /** Initiate OAuth / general connection simulation */
+  const handleConnect = useCallback(
+    async (platformId: string) => {
+      const conn = await connectPlatform(platformId);
+      if (conn.status === 'connected') {
+        const platform = SOCIAL_PLATFORMS.find((p) => p.id === platformId);
+        if (platform) {
+          addPlatformNodeAndNotify(platform);
+        }
+      }
+    },
+    [connectPlatform, addPlatformNodeAndNotify]
+  );
+
+  /** Initiate API Key validation simulation */
+  const handleConnectWithKey = useCallback(
+    async (platformId: string, key: string) => {
+      const conn = await connectWithApiKey(platformId, key);
+      if (conn.status === 'connected') {
+        const platform = SOCIAL_PLATFORMS.find((p) => p.id === platformId);
+        if (platform) {
+          addPlatformNodeAndNotify(platform);
+        }
+      }
+    },
+    [connectWithApiKey, addPlatformNodeAndNotify]
+  );
+
+  /** Disconnect platform and remove node */
+  const handleDisconnect = useCallback(
+    (platformId: string) => {
+      disconnectPlatform(platformId);
+      // Remove corresponding canvas node
+      const node = chat.nodes.find(
+        (n) => n.type === 'social-connector' && n.platform?.id === platformId
+      );
+      if (node) {
+        chat.removeNode(node.id);
+      }
+    },
+    [chat, disconnectPlatform]
   );
 
   /** Disconnect platform node and remove it from connected list */
@@ -62,23 +130,22 @@ export default function HomePage() {
     (nodeId: string) => {
       const node = chat.nodes.find((n) => n.id === nodeId);
       if (node && node.type === 'social-connector' && node.platform) {
-        const platformId = node.platform.id;
-        setConnectedPlatforms((prev) => prev.filter((id) => id !== platformId));
+        disconnectPlatform(node.platform.id);
       }
       chat.removeNode(nodeId);
     },
-    [chat]
+    [chat, disconnectPlatform]
   );
 
-  /** Send message — place node at canvas center */
+  /** Send message — place node at canvas center, forwarding active platforms to Gemini */
   const handleSend = useCallback(
     (prompt: string) => {
       const cx = typeof window !== 'undefined' ? window.innerWidth / 2 : 500;
       const cy = typeof window !== 'undefined' ? window.innerHeight / 2 : 400;
       const canvasPos = canvas.screenToCanvas(cx, cy);
-      chat.sendMessage(prompt, canvasPos);
+      chat.sendMessage(prompt, canvasPos, connectedPlatformIds);
     },
-    [canvas, chat]
+    [canvas, chat, connectedPlatformIds]
   );
 
   /** Resend from history */
@@ -97,9 +164,21 @@ export default function HomePage() {
     [handleSend]
   );
 
+  // Retrieve current modal connection status properties
+  const modalConnection = modalPlatform ? getConnection(modalPlatform.id) : undefined;
+  const connectionStatus = modalConnection?.status ?? 'disconnected';
+  const connectedAs = modalConnection?.connectedAs;
+  const maskedCredential = modalConnection?.maskedCredential;
+  const errorMessage = modalConnection?.errorMessage;
+
   return (
     <>
       <Header />
+
+      <ConnectedAppsBar
+        connections={connections}
+        onDisconnect={handleDisconnect}
+      />
 
       <SideToolbar
         activeTool={canvas.activeTool}
@@ -146,8 +225,8 @@ export default function HomePage() {
       <AddAssetsPanel
         isOpen={assetsOpen}
         onClose={() => setAssetsOpen(false)}
-        onSelectPlatform={handleConnectPlatform}
-        connectedIds={connectedPlatforms}
+        onSelectPlatform={handleSelectPlatform}
+        connectedIds={connectedPlatformIds}
       />
 
       <AIResponsePanel
@@ -155,6 +234,19 @@ export default function HomePage() {
         onRemoveNode={chat.removeNode}
         isStreaming={chat.isStreaming}
       />
+
+      <ConnectionFlowModal
+        isOpen={modalOpen}
+        platform={modalPlatform}
+        onClose={() => setModalOpen(false)}
+        onConnect={handleConnect}
+        onConnectWithKey={handleConnectWithKey}
+        connectionStatus={connectionStatus}
+        connectedAs={connectedAs}
+        maskedCredential={maskedCredential}
+        errorMessage={errorMessage}
+      />
     </>
   );
 }
+
