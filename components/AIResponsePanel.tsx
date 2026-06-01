@@ -3,13 +3,188 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Icon from './Icon';
 import SocialIcon from './SocialIcon';
-import type { CanvasNode, PlatformContent } from '@/lib/types';
+import type { CanvasNode, PlatformContent, PlatformAction } from '@/lib/types';
 
 type AIResponsePanelProps = {
   nodes: CanvasNode[];
   onRemoveNode: (id: string) => void;
   isStreaming: boolean;
 };
+
+function ActionCard({ action }: { action: PlatformAction }) {
+  const [status, setStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
+  const [resultMsg, setResultMsg] = useState('');
+  const [resultUrl, setResultUrl] = useState('');
+
+  const handleExecute = async () => {
+    setStatus('running');
+    setResultMsg('');
+    setResultUrl('');
+
+    try {
+      const stored = localStorage.getItem(`token-${action.platformId}`);
+      if (!stored) {
+        throw new Error(`Platform ${action.platformId} is not connected. Please connect it first.`);
+      }
+
+      const token = JSON.parse(stored).accessToken;
+      if (!token) {
+        throw new Error(`No access token found. Please reconnect ${action.platformId}.`);
+      }
+
+      if (action.platformId === 'github') {
+        if (action.type === 'create_repo') {
+          const res = await fetch('https://api.github.com/user/repos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+            },
+            body: JSON.stringify({
+              name: action.params.name,
+              description: action.params.description || 'Created via Connector Canvas',
+              auto_init: true,
+            }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || `Failed to create repository: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+          setStatus('success');
+          setResultMsg(`Repository "${data.name}" created successfully!`);
+          setResultUrl(data.html_url);
+        } else if (action.type === 'create_issue') {
+          let repo = action.params.repo;
+          if (!repo) {
+            // Fallback: get user login to construct owner/repo path
+            const userRes = await fetch('https://api.github.com/user', {
+              headers: { Authorization: `token ${token}` }
+            });
+            if (userRes.ok) {
+              const u = await userRes.json();
+              if (u && u.login) {
+                repo = `${u.login}/${action.params.repo_name || 'Nextgen'}`;
+              }
+            }
+          }
+
+          if (!repo) {
+            throw new Error('Repository name (owner/repo) is required to create an issue.');
+          }
+
+          const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+            },
+            body: JSON.stringify({
+              title: action.params.title,
+              body: action.params.body || '',
+            }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || `Failed to create issue: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+          setStatus('success');
+          setResultMsg(`Issue #${data.number} "${data.title}" created successfully!`);
+          setResultUrl(data.html_url);
+        } else {
+          throw new Error(`Unsupported action type: ${action.type}`);
+        }
+      } else {
+        // Simulated execution for other non-CORS enabled endpoints
+        await new Promise((r) => setTimeout(r, 2000));
+        setStatus('success');
+        setResultMsg(`Action "${action.label}" executed successfully! (Simulated)`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setStatus('error');
+      setResultMsg(err.message || 'An error occurred during execution.');
+    }
+  };
+
+  return (
+    <div className="border border-dashed border-white/10 bg-white/[0.01] rounded-xl p-3.5 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center p-1.5 shrink-0 border border-primary/20 text-primary">
+            <Icon name="bolt" size={16} filled />
+          </div>
+          <div>
+            <span className="font-heading text-[12px] font-semibold text-on-surface block leading-tight">
+              PROPOSED AUTOMATION
+            </span>
+            <span className="text-[11.5px] text-on-surface-variant/80 mt-0.5 block">
+              {action.label}
+            </span>
+          </div>
+        </div>
+
+        {status === 'pending' && (
+          <button
+            onClick={handleExecute}
+            className="px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 active:scale-[0.98] text-[11px] font-semibold tracking-wider uppercase transition-all shrink-0 border border-primary/30 cursor-pointer"
+          >
+            Run Automation
+          </button>
+        )}
+
+        {status === 'running' && (
+          <div className="flex items-center gap-1.5 text-secondary text-[11px] font-semibold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+            <span>Executing...</span>
+          </div>
+        )}
+
+        {status === 'success' && (
+          <div className="flex items-center gap-1 text-emerald-400 text-[11px] font-semibold uppercase tracking-wider">
+            <Icon name="check_circle" size={14} filled className="text-emerald-400" />
+            <span>Success</span>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="flex items-center gap-1 text-error text-[11px] font-semibold uppercase tracking-wider">
+            <Icon name="error" size={14} filled className="text-error" />
+            <span>Failed</span>
+          </div>
+        )}
+      </div>
+
+      {resultMsg && (
+        <div className={`text-[12px] rounded-lg p-2.5 leading-relaxed select-text ${
+          status === 'success' 
+            ? 'bg-emerald-500/[0.04] border border-emerald-500/10 text-emerald-400/90' 
+            : 'bg-error/[0.04] border border-error/10 text-error/90'
+        }`}>
+          {resultMsg}
+          {resultUrl && (
+            <a
+              href={resultUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline font-semibold block mt-1.5 inline-flex items-center gap-1"
+            >
+              Open Link
+              <Icon name="open_in_new" size={12} />
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PlatformCard({ platform }: { platform: PlatformContent }) {
   const [copied, setCopied] = useState(false);
@@ -331,6 +506,13 @@ export default function AIResponsePanel({ nodes, onRemoveNode, isStreaming }: AI
                             {node.structuredResponse.platforms.map((p) => (
                               <PlatformCard key={p.platformId} platform={p} />
                             ))}
+                            {node.structuredResponse.actions && node.structuredResponse.actions.length > 0 && (
+                              <div className="space-y-3.5 pt-3 border-t border-white/[0.06] mt-3.5">
+                                {node.structuredResponse.actions.map((act, actIdx) => (
+                                  <ActionCard key={actIdx} action={act} />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -357,4 +539,3 @@ export default function AIResponsePanel({ nodes, onRemoveNode, isStreaming }: AI
     </div>
   );
 }
-

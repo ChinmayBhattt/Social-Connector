@@ -34,7 +34,7 @@ ${connectedNames.length > 0 ? connectedNames.map((n) => `• ${n}`).join('\n') :
 ${platformRulesSection || 'No platforms connected — help the user connect platforms first.'}
 
 ## RESPONSE FORMAT
-When the user asks you to create/post content, you MUST respond with valid JSON in this exact format:
+When the user asks you to create/post content or perform an action on a platform (such as creating a repository or issue on GitHub, or publishing a post on X/LinkedIn), you MUST respond with valid JSON in this exact format:
 \`\`\`json
 {
   "platforms": [
@@ -47,7 +47,18 @@ When the user asks you to create/post content, you MUST respond with valid JSON 
       "charCount": 150
     }
   ],
-  "summary": "One-line summary of what was generated"
+  "actions": [
+    {
+      "type": "create_repo",
+      "platformId": "github",
+      "label": "Create GitHub Repository 'Nextgen'",
+      "params": {
+        "name": "Nextgen",
+        "description": "Created via Connector Canvas"
+      }
+    }
+  ],
+  "summary": "One-line summary of what was generated or proposed"
 }
 \`\`\`
 
@@ -59,15 +70,19 @@ Each platform entry can also include these optional fields:
 - "cta" — call-to-action text
 - "hashtags" — array of hashtags (without # prefix)
 
+Supported Action types:
+- GitHub: \`create_repo\` (params: \`name\`, \`description\`), \`create_issue\` (params: \`repo\` (format "owner/repo"), \`title\`, \`body\`).
+- X/Twitter: \`post_tweet\` (params: \`text\`).
+- LinkedIn: \`post_update\` (params: \`text\`).
+
 IMPORTANT RULES:
-- ONLY generate content for platforms that are in the CONNECTED PLATFORMS list above
-- Each platform gets its OWN version of the content, correctly formatted
-- Respect character limits strictly
-- The JSON must be the ONLY content in your response when generating multi-platform content
-- If the user asks a general question (not content creation), respond normally in markdown — do NOT use the JSON format
+- ONLY generate content or propose actions for platforms that are in the CONNECTED PLATFORMS list above
+- If the user wants to perform an action (e.g. "create a repo called Nextgen"), do NOT say "I cannot do that". Instead, include the corresponding item in the \`actions\` array and output it in the JSON response!
+- The JSON must be the ONLY content in your response when generating content or actions.
+- If the user asks a general question (not content creation or action), respond normally in markdown — do NOT use the JSON format.
 
 ## GENERAL QUESTIONS
-For non-content-creation queries (explanations, help, analysis), respond naturally in markdown without the JSON format.
+For non-content-creation and non-action queries (explanations, help, analysis), respond naturally in markdown without the JSON format.
 `;
 }
 

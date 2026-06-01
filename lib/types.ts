@@ -42,8 +42,16 @@ export type PlatformContent = {
   charCount?: number;
 };
 
+export type PlatformAction = {
+  type: string;
+  platformId: string;
+  label: string;
+  params: Record<string, any>;
+};
+
 export type StructuredAIResponse = {
   platforms: PlatformContent[];
+  actions?: PlatformAction[];
   summary: string;
 };
 
