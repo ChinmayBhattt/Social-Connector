@@ -93,7 +93,8 @@ export async function GET(request: NextRequest) {
       const clientId = process.env.LINKEDIN_CLIENT_ID;
       if (!clientId) return sendAuthErrorHTML('LINKEDIN_CLIENT_ID is not configured in your .env file.');
       
-      authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=linkedin&scope=r_liteprofile%20r_emailaddress%20w_member_social`;
+      // Request modern OIDC scopes (openid, profile, email) along with sharing scope (w_member_social)
+      authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=linkedin&scope=openid%20profile%20email%20w_member_social`;
       break;
     }
 
@@ -101,9 +102,8 @@ export async function GET(request: NextRequest) {
       const clientId = process.env.TWITTER_CLIENT_ID;
       if (!clientId) return sendAuthErrorHTML('TWITTER_CLIENT_ID is not configured in your .env file.');
 
-      // Twitter OAuth 2.0 requires state, code challenge for PKCE
-      // For local development simplicity we use plain method
-      authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=x-platform&scope=tweet.read%20tweet.write%20users.read%20offline.access&code_challenge=challenge&code_challenge_method=plain`;
+      // Twitter OAuth 2.0 requires state, code challenge for PKCE (minimum 43 characters for plain method)
+      authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=x-platform&scope=tweet.read%20tweet.write%20users.read%20offline.access&code_challenge=challenge_challenge_challenge_challenge_challenge&code_challenge_method=plain`;
       break;
     }
 

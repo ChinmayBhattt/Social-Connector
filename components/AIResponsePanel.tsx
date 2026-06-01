@@ -101,6 +101,31 @@ function ActionCard({ action }: { action: PlatformAction }) {
         } else {
           throw new Error(`Unsupported action type: ${action.type}`);
         }
+      } else if (action.platformId === 'x-platform' || action.platformId === 'linkedin') {
+        const res = await fetch('/api/actions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            platformId: action.platformId,
+            type: action.type,
+            token,
+            params: action.params,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Failed to execute action: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        setStatus('success');
+        setResultMsg(data.message || `Action "${action.label}" executed successfully!`);
+        if (data.url) {
+          setResultUrl(data.url);
+        }
       } else {
         // Simulated execution for other non-CORS enabled endpoints
         await new Promise((r) => setTimeout(r, 2000));

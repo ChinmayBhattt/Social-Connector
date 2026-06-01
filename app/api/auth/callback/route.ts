@@ -226,8 +226,8 @@ export async function GET(request: NextRequest) {
 
         const accessToken = tokenData.access_token;
 
-        // Fetch user profile
-        const userRes = await fetch('https://api.linkedin.com/v2/me', {
+        // Fetch user profile (Try modern OpenID Connect userinfo first, fallback to legacy me endpoint)
+        let userRes = await fetch('https://api.linkedin.com/v2/userinfo', {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -236,9 +236,20 @@ export async function GET(request: NextRequest) {
         let connectedAs = 'LinkedIn User';
         if (userRes.ok) {
           const userData = await userRes.json();
-          const firstName = userData.localizedFirstName || '';
-          const lastName = userData.localizedLastName || '';
-          connectedAs = `${firstName} ${lastName}`.trim() || 'LinkedIn User';
+          connectedAs = userData.name || `${userData.given_name} ${userData.family_name}`.trim() || 'LinkedIn User';
+        } else {
+          // Fallback to legacy me profile endpoint
+          userRes = await fetch('https://api.linkedin.com/v2/me', {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          });
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            const firstName = userData.localizedFirstName || '';
+            const lastName = userData.localizedLastName || '';
+            connectedAs = `${firstName} ${lastName}`.trim() || 'LinkedIn User';
+          }
         }
 
         return sendAuthResultHTML({
@@ -273,7 +284,7 @@ export async function GET(request: NextRequest) {
             code,
             grant_type: 'authorization_code',
             redirect_uri: callbackUrl,
-            code_verifier: 'challenge',
+            code_verifier: 'challenge_challenge_challenge_challenge_challenge',
           }),
         });
 

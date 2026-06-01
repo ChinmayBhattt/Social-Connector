@@ -212,6 +212,9 @@ export function useConnections() {
    */
   const disconnectPlatform = useCallback((platformId: string) => {
     setConnections((prev) => prev.filter((c) => c.platformId !== platformId));
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`token-${platformId}`);
+    }
   }, []);
 
   /**
