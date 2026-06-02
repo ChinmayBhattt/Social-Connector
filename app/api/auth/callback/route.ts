@@ -370,6 +370,63 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      case 'google-sheets': {
+        const clientId = process.env.GOOGLE_SHEETS_CLIENT_ID;
+        const clientSecret = process.env.GOOGLE_SHEETS_CLIENT_SECRET;
+
+        if (!clientId || !clientSecret) {
+          return sendAuthResultHTML({
+            success: false,
+            error: 'Google Sheets Client ID/Secret is not configured in .env',
+          });
+        }
+
+        // Exchange code for token
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: callbackUrl,
+            grant_type: 'authorization_code',
+          }),
+        });
+
+        if (!tokenRes.ok) {
+          const errBody = await tokenRes.json().catch(() => ({}));
+          throw new Error(`Google token exchange failed: ${errBody.error_description || tokenRes.statusText}`);
+        }
+
+        const tokenData = await tokenRes.json();
+        const accessToken = tokenData.access_token;
+        const refreshToken = tokenData.refresh_token;
+
+        // Fetch user profile
+        const userRes = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        let connectedAs = 'Google User';
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          connectedAs = userData.name || userData.email || 'Google User';
+        }
+
+        return sendAuthResultHTML({
+          success: true,
+          platformId: 'google-sheets',
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          connectedAs,
+        });
+      }
+
       default:
         throw new Error(`Unsupported state parameter: ${state}`);
     }

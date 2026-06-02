@@ -101,7 +101,7 @@ function ActionCard({ action }: { action: PlatformAction }) {
         } else {
           throw new Error(`Unsupported action type: ${action.type}`);
         }
-      } else if (action.platformId === 'x-platform' || action.platformId === 'linkedin') {
+      } else if (action.platformId === 'x-platform' || action.platformId === 'linkedin' || action.platformId === 'google-sheets') {
         const res = await fetch('/api/actions', {
           method: 'POST',
           headers: {

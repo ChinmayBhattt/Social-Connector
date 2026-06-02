@@ -115,6 +115,20 @@ export async function GET(request: NextRequest) {
       break;
     }
 
+    case 'google-sheets': {
+      const clientId = process.env.GOOGLE_SHEETS_CLIENT_ID;
+      if (!clientId) return sendAuthErrorHTML('GOOGLE_SHEETS_CLIENT_ID is not configured in your .env file.');
+
+      const scopes = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/userinfo.profile',
+      ].join(' ');
+
+      authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&state=google-sheets&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
+      break;
+    }
+
     default:
       return Response.json({ error: `Platform ${platform} is not supported for real OAuth2 flow` }, { status: 400 });
   }

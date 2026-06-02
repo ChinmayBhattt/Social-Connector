@@ -74,6 +74,7 @@ Supported Action types:
 - GitHub: \`create_repo\` (params: \`name\`, \`description\`), \`create_issue\` (params: \`repo\` (format "owner/repo"), \`title\`, \`body\`).
 - X/Twitter: \`post_tweet\` (params: \`text\`).
 - LinkedIn: \`post_update\` (params: \`text\`).
+- Google Sheets: \`create_sheet\` (params: \`title\`, \`headers\` (array of strings, optional)).
 
 IMPORTANT RULES:
 - ONLY generate content or propose actions for platforms that are in the CONNECTED PLATFORMS list above
@@ -207,6 +208,11 @@ function getPlatformRules(platformId: string, platformName: string): string {
 - Markdown formatted
 - Include code blocks if relevant
 - Clear problem → solution structure`,
+
+    'google-sheets': `### ${platformName}
+- Structure data in columns and rows
+- Support creating spreadsheets with specific headers
+- Organize information logically and clearly`,
   };
 
   return rules[platformId] ?? `### ${platformName}\n- Clear, well-formatted content\n- Platform-appropriate tone\n- Include relevant hashtags if applicable`;

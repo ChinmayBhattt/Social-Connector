@@ -91,7 +91,7 @@ export type SocialPlatform = {
   icon: string;
   color: string;
   bgColor: string;
-  category: 'social' | 'video' | 'messaging' | 'professional' | 'creative' | 'music' | 'news' | 'commerce';
+  category: 'social' | 'video' | 'messaging' | 'professional' | 'creative' | 'music' | 'news' | 'commerce' | 'productivity';
   description: string;
   connected?: boolean;
 };

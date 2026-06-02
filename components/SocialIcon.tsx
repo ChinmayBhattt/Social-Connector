@@ -254,4 +254,17 @@ const ICONS: Record<string, (size: number) => React.ReactNode> = {
       <path d="M36 19.5c-.1 2.8-2.1 6.6-5.9 11.5C26.1 36 22.8 38 20.3 38c-1.6 0-2.9-1.4-3.9-4.3-2.1-7.8-3-12.4-5.3-12.4-.2 0-.8.4-1.8 1.1l-1.1-1.4c1.1-1 2.2-2 3.3-3 1.5-1.3 2.6-2 3.3-2.1 1.8-.2 2.9 1 3.3 3.6.4 2.8.7 4.6.9 5.2.5 2.3 1 3.4 1.7 3.4.5 0 1.2-.8 2.1-2.3.9-1.5 1.4-2.7 1.5-3.5.1-1.4-.4-2.1-1.6-2.1-.6 0-1.2.1-1.8.4 1.2-3.9 3.5-5.8 6.8-5.7 2.5.1 3.7 1.7 3.6 4.6z" fill="white" />
     </svg>
   ),
+
+  'google-sheets': (s) => (
+    <svg viewBox="0 0 48 48" width={s} height={s}>
+      <rect width="48" height="48" rx="10" fill="#0F9D58" />
+      <path d="M14 12h14l8 8v16a2 2 0 01-2 2H14a2 2 0 01-2-2V14a2 2 0 012-2z" fill="white" opacity="0.95" />
+      <path d="M28 12l8 8h-6a2 2 0 01-2-2v-6z" fill="white" opacity="0.7" />
+      <rect x="16" y="22" width="16" height="12" rx="1" fill="none" stroke="#0F9D58" strokeWidth="1.5" />
+      <line x1="16" y1="26" x2="32" y2="26" stroke="#0F9D58" strokeWidth="1" />
+      <line x1="16" y1="30" x2="32" y2="30" stroke="#0F9D58" strokeWidth="1" />
+      <line x1="22" y1="22" x2="22" y2="34" stroke="#0F9D58" strokeWidth="1" />
+      <line x1="27" y1="22" x2="27" y2="34" stroke="#0F9D58" strokeWidth="1" />
+    </svg>
+  ),
 };

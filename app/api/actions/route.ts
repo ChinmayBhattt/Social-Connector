@@ -110,6 +110,61 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (platformId === 'google-sheets' && type === 'create_sheet') {
+      if (!params || !params.title) {
+        return Response.json({ error: 'Missing title parameter for spreadsheet' }, { status: 400 });
+      }
+
+      const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          properties: {
+            title: params.title,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `Google Sheets API error: ${res.statusText}`;
+        throw new Error(errMsg);
+      }
+
+      const data = await res.json();
+      const spreadsheetId = data.spreadsheetId;
+      const spreadsheetUrl = data.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+
+      if (params.headers && Array.isArray(params.headers) && params.headers.length > 0) {
+        try {
+          await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                values: [params.headers],
+              }),
+            }
+          );
+        } catch (appendErr) {
+          console.error('Error appending headers:', appendErr);
+        }
+      }
+
+      return Response.json({
+        success: true,
+        message: `Spreadsheet "${params.title}" created successfully!`,
+        url: spreadsheetUrl,
+      });
+    }
+
     return Response.json({ error: `Platform ${platformId} action ${type} is not supported` }, { status: 400 });
   } catch (err: any) {
     console.error('Action API failed:', err);

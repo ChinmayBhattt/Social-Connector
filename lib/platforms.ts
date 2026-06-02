@@ -294,6 +294,18 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
     category: 'commerce',
     description: 'Process payments and manage subscriptions',
   },
+
+  // === Productivity ===
+  {
+    id: 'google-sheets',
+    name: 'Google Sheets',
+    label: 'GOOGLE SHEETS',
+    icon: 'google-sheets',
+    color: '#0F9D58',
+    bgColor: '#0a1a10',
+    category: 'productivity',
+    description: 'Read and write spreadsheet data',
+  },
 ];
 
 export const CATEGORIES = [
@@ -305,4 +317,5 @@ export const CATEGORIES = [
   { id: 'creative', label: 'Creative' },
   { id: 'music', label: 'Music' },
   { id: 'commerce', label: 'Commerce' },
+  { id: 'productivity', label: 'Productivity' },
 ] as const;

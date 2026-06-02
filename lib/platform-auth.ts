@@ -516,6 +516,31 @@ export const PLATFORM_AUTH: Record<string, PlatformAuth> = {
     verifyEndpoint: 'GET /me',
     verifySuccessFormat: 'Connected as {username}',
   },
+
+  /* ========== PRODUCTIVITY PLATFORMS ========== */
+
+  'google-sheets': {
+    platformId: 'google-sheets',
+    authType: 'oauth2',
+    scopes: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+    scopeDescriptions: {
+      'https://www.googleapis.com/auth/spreadsheets': 'Read and edit your Google Sheets',
+      'https://www.googleapis.com/auth/drive.file': 'Access files created by this app',
+      'https://www.googleapis.com/auth/userinfo.profile': 'View your basic profile info',
+    },
+    connectionSteps: [
+      'You will be redirected to Google\'s sign-in page',
+      'Log in with your Google account',
+      'Review the Google Sheets permissions and click "Allow"',
+      'You will be brought back here — connected and ready',
+    ],
+    verifyEndpoint: 'GET /oauth2/v1/userinfo',
+    verifySuccessFormat: 'Connected as {name}',
+  },
 };
 
 /**
@@ -574,6 +599,7 @@ const SIMULATED_IDENTITIES: Record<string, string> = {
   'behance': 'Connector Creative',
   'vimeo': 'Connector Films',
   'soundcloud': 'connector-audio',
+  'google-sheets': 'Connector Spreadsheets',
 };
 
 export function getSimulatedIdentity(platformId: string): string {
