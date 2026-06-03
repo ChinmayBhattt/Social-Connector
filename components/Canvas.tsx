@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import EmptyState from './EmptyState';
 import AppNode from './AppNode';
 import type { CanvasNode, CanvasTransform, Tool } from '@/lib/types';
@@ -36,6 +36,34 @@ export default function Canvas({
 }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const mouseGlowRef = useRef<HTMLDivElement>(null);
+
+  const [settings, setSettings] = useState({
+    gridStyle: 'dots',
+    canvasGlows: true,
+  });
+
+  const loadSettings = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('connector-canvas-settings');
+      if (raw) {
+        try {
+          const config = JSON.parse(raw);
+          setSettings({
+            gridStyle: config.gridStyle || 'dots',
+            canvasGlows: config.canvasGlows !== undefined ? config.canvasGlows : true,
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSettings();
+    window.addEventListener('connector-settings-updated', loadSettings);
+    return () => window.removeEventListener('connector-settings-updated', loadSettings);
+  }, [loadSettings]);
 
   /** Mouse-follow glow effect */
   const handleMouseMove = useCallback(
@@ -79,7 +107,7 @@ export default function Canvas({
   return (
     <main
       ref={canvasRef}
-      className={`relative h-screen w-screen overflow-hidden select-none canvas-bg ${cursorClass}`}
+      className={`relative h-screen w-screen overflow-hidden select-none canvas-bg-${settings.gridStyle} ${cursorClass}`}
       onWheel={onWheel}
       onMouseDown={onPanStart}
       onMouseMove={handleMouseMove}
@@ -87,11 +115,13 @@ export default function Canvas({
       onMouseLeave={onPanEnd}
     >
       {/* Mouse follow glow */}
-      <div
-        ref={mouseGlowRef}
-        className="pointer-events-none fixed w-[300px] h-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.03] blur-[80px] z-0 transition-none"
-        style={{ left: '50%', top: '50%' }}
-      />
+      {settings.canvasGlows && (
+        <div
+          ref={mouseGlowRef}
+          className="pointer-events-none fixed w-[300px] h-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.03] blur-[80px] z-0 transition-none"
+          style={{ left: '50%', top: '50%' }}
+        />
+      )}
 
       {/* Canvas transform layer */}
       <div
@@ -120,7 +150,7 @@ export default function Canvas({
               const endX = node.position.x;
               const endY = node.position.y;
 
-              // Compute control points for smooth S-curve Bezier path
+              // Compute S-curve Control points
               const ctrlX1 = startX + (endX - startX) * 0.25;
               const ctrlY1 = startY + (endY - startY) * 0.75;
               const ctrlX2 = startX + (endX - startX) * 0.75;
@@ -129,13 +159,13 @@ export default function Canvas({
 
               return (
                 <g key={`link-${node.id}`}>
-                  {/* Outer neon glow line using solid color to bypass bounding-box unit rendering bug */}
+                  {/* Outer neon glow line */}
                   <path
                     d={pathD}
                     fill="none"
                     stroke="var(--color-primary)"
                     strokeWidth="2"
-                    filter="url(#neon-glow)"
+                    filter={settings.canvasGlows ? "url(#neon-glow)" : undefined}
                     opacity="0.6"
                   />
                   {/* Inner dashed detail */}
@@ -147,8 +177,12 @@ export default function Canvas({
                     strokeDasharray="4 4"
                     opacity="0.4"
                   />
-                  {/* Moving pulse dot indicating active workflow connection */}
-                  <circle r="4" fill="var(--color-primary)" style={{ filter: 'drop-shadow(0 0 6px var(--color-primary))' }}>
+                  {/* Moving pulse dot */}
+                  <circle
+                    r="4"
+                    fill="var(--color-primary)"
+                    style={settings.canvasGlows ? { filter: 'drop-shadow(0 0 6px var(--color-primary))' } : undefined}
+                  >
                     <animateMotion dur="2.5s" repeatCount="indefinite" path={pathD} />
                   </circle>
                 </g>
@@ -168,14 +202,16 @@ export default function Canvas({
           <EmptyState onStartCreating={onStartCreating} showText={!hasConnectedApps} />
         </div>
         {/* Background centerpiece glow */}
-        <div
-          className="absolute w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full -z-10 pointer-events-none"
-          style={{
-            left: 0,
-            top: 0,
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
+        {settings.canvasGlows && (
+          <div
+            className="absolute w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full -z-10 pointer-events-none"
+            style={{
+              left: 0,
+              top: 0,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        )}
 
         {/* Connected Social connector App Nodes */}
         {nodes

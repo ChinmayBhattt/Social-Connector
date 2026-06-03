@@ -176,11 +176,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===== Canvas Background ===== */
-.canvas-bg {
+/* ===== Canvas Backgrounds ===== */
+.canvas-bg-dots {
   background-color: var(--color-background);
   background-image: radial-gradient(var(--canvas-grid) 1px, transparent 1px);
   background-size: 32px 32px;
+}
+
+.canvas-bg-lines {
+  background-color: var(--color-background);
+  background-image: 
+    linear-gradient(var(--canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.canvas-bg-none {
+  background-color: var(--color-background);
 }
 
 /* ===== Glassmorphism ===== */

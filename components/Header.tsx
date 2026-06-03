@@ -35,11 +35,35 @@ export default function Header() {
   const [autoSave, setAutoSave] = useState(true);
   const [aiAssist, setAiAssist] = useState(true);
   const [gridStyle, setGridStyle] = useState<'dots' | 'lines' | 'none'>('dots');
+  const [aiTemperature, setAiTemperature] = useState(0.7);
+  const [keyboardShortcuts, setKeyboardShortcuts] = useState(true);
+  const [canvasGlows, setCanvasGlows] = useState(true);
   const [devMode, setDevMode] = useState(false);
   const [showSettingsSuccess, setShowSettingsSuccess] = useState(false);
 
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Load preferences from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('connector-canvas-settings');
+      if (raw) {
+        try {
+          const config = JSON.parse(raw);
+          if (config.autoSave !== undefined) setAutoSave(config.autoSave);
+          if (config.aiAssist !== undefined) setAiAssist(config.aiAssist);
+          if (config.gridStyle !== undefined) setGridStyle(config.gridStyle);
+          if (config.aiTemperature !== undefined) setAiTemperature(config.aiTemperature);
+          if (config.keyboardShortcuts !== undefined) setKeyboardShortcuts(config.keyboardShortcuts);
+          if (config.canvasGlows !== undefined) setCanvasGlows(config.canvasGlows);
+          if (config.devMode !== undefined) setDevMode(config.devMode);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
@@ -108,6 +132,19 @@ export default function Header() {
 
   // Save settings handler
   const handleSaveSettings = () => {
+    if (typeof window !== 'undefined') {
+      const config = {
+        autoSave,
+        aiAssist,
+        gridStyle,
+        aiTemperature,
+        keyboardShortcuts,
+        canvasGlows,
+        devMode,
+      };
+      localStorage.setItem('connector-canvas-settings', JSON.stringify(config));
+      window.dispatchEvent(new Event('connector-settings-updated'));
+    }
     setShowSettingsSuccess(true);
     setTimeout(() => {
       setShowSettingsSuccess(false);
@@ -463,6 +500,72 @@ export default function Header() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* AI Creativity / Temperature */}
+                <div className="flex flex-col gap-2 border-t border-white/[0.06] pt-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs font-semibold text-on-surface">AI Creativity (Temperature)</div>
+                      <div className="text-[10px] text-on-surface-variant/60">Balance accuracy vs. creative ideas</div>
+                    </div>
+                    <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-lg border border-primary/20">
+                      {aiTemperature.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1">
+                    <span className="text-[10px] font-semibold text-on-surface-variant/60 font-label">Precise (0.2)</span>
+                    <input
+                      type="range"
+                      min="0.2"
+                      max="1.0"
+                      step="0.1"
+                      value={aiTemperature}
+                      onChange={(e) => setAiTemperature(parseFloat(e.target.value))}
+                      className="flex-1 accent-primary h-1 rounded-full bg-white/10 appearance-none cursor-pointer"
+                    />
+                    <span className="text-[10px] font-semibold text-on-surface-variant/60 font-label">Creative (1.0)</span>
+                  </div>
+                </div>
+
+                {/* Keyboard Shortcuts */}
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-xs font-semibold text-on-surface">Keyboard shortcuts</div>
+                    <div className="text-[10px] text-on-surface-variant/60 font-label">Enable pan (P), zoom (Z), reset (ESC)</div>
+                  </div>
+                  <button
+                    onClick={() => setKeyboardShortcuts(!keyboardShortcuts)}
+                    className={`w-10 h-6 rounded-full transition-colors relative flex items-center ${
+                      keyboardShortcuts ? 'bg-primary' : 'bg-white/10'
+                    }`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full bg-white absolute transition-transform ${
+                        keyboardShortcuts ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Hardware Accelerated Canvas Effects */}
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-xs font-semibold text-on-surface">Hardware acceleration</div>
+                    <div className="text-[10px] text-on-surface-variant/60 font-label">Accelerated glow, pulse & blur transitions</div>
+                  </div>
+                  <button
+                    onClick={() => setCanvasGlows(!canvasGlows)}
+                    className={`w-10 h-6 rounded-full transition-colors relative flex items-center ${
+                      canvasGlows ? 'bg-primary' : 'bg-white/10'
+                    }`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full bg-white absolute transition-transform ${
+                        canvasGlows ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Developer Mode */}
