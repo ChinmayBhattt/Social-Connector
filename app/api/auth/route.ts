@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       if (!clientId) return sendAuthErrorHTML('TWITTER_CLIENT_ID is not configured in your .env file.');
 
       // Twitter OAuth 2.0 requires state, code challenge for PKCE (minimum 43 characters for plain method)
-      authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=x-platform&scope=tweet.read%20tweet.write%20users.read%20offline.access&code_challenge=challenge_challenge_challenge_challenge_challenge&code_challenge_method=plain`;
+      authUrl = `https://x.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=x-platform&scope=tweet.read%20tweet.write%20users.read%20offline.access&code_challenge=challenge_challenge_challenge_challenge_challenge&code_challenge_method=plain`;
       break;
     }
 
