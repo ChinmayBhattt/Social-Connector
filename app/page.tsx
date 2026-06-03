@@ -192,6 +192,7 @@ export default function HomePage() {
         transform={canvas.transform}
         activeTool={canvas.activeTool}
         isPanning={canvas.isPanning}
+        isMounted={canvas.isMounted}
         nodes={chat.nodes}
         onWheel={canvas.onWheel}
         onPanStart={canvas.onPanStart}

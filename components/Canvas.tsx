@@ -9,6 +9,7 @@ type CanvasProps = {
   transform: CanvasTransform;
   activeTool: Tool;
   isPanning: boolean;
+  isMounted: boolean;
   nodes: CanvasNode[];
   onWheel: (e: React.WheelEvent) => void;
   onPanStart: (e: React.MouseEvent) => void;
@@ -23,6 +24,7 @@ export default function Canvas({
   transform,
   activeTool,
   isPanning,
+  isMounted,
   nodes,
   onWheel,
   onPanStart,
@@ -93,9 +95,10 @@ export default function Canvas({
 
       {/* Canvas transform layer */}
       <div
-        className="absolute inset-0 origin-top-left"
+        className="absolute inset-0 origin-top-left transition-opacity duration-300"
         style={{
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+          opacity: isMounted ? 1 : 0,
         }}
       >
         <svg className="absolute inset-0 pointer-events-none overflow-visible z-0" style={{ transform: 'translate(0, 0)' }}>

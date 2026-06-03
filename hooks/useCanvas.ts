@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { CanvasTransform, Tool } from '@/lib/types';
 
 const MIN_SCALE = 0.25;
@@ -11,9 +11,10 @@ export function useCanvas() {
   const [transform, setTransform] = useState<CanvasTransform>({ x: 0, y: 0, scale: 1 });
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [isPanning, setIsPanning] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const panStart = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
 
-  // Center canvas origin on mount
+  // Center canvas origin on mount and mark as ready
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setTransform({
@@ -21,6 +22,7 @@ export function useCanvas() {
         y: window.innerHeight / 2,
         scale: 1,
       });
+      setIsMounted(true);
     }
   }, []);
 
@@ -52,7 +54,9 @@ export function useCanvas() {
   }, [zoomAt]);
 
   const resetView = useCallback(() => {
-    setTransform({ x: 0, y: 0, scale: 1 });
+    const cx = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+    const cy = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+    setTransform({ x: cx, y: cy, scale: 1 });
   }, []);
 
   /** Convert screen coords to canvas coords */
@@ -92,10 +96,11 @@ export function useCanvas() {
       if (!isPanning || !panStart.current) return;
       const dx = e.clientX - panStart.current.x;
       const dy = e.clientY - panStart.current.y;
+      const { tx, ty } = panStart.current;
       setTransform((prev) => ({
         ...prev,
-        x: panStart.current!.tx + dx,
-        y: panStart.current!.ty + dy,
+        x: tx + dx,
+        y: ty + dy,
       }));
     },
     [isPanning]
@@ -120,6 +125,7 @@ export function useCanvas() {
     activeTool,
     setActiveTool,
     isPanning,
+    isMounted,
     zoomIn,
     zoomOut,
     resetView,
