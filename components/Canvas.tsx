@@ -133,7 +133,7 @@ export default function Canvas({
                   <path
                     d={pathD}
                     fill="none"
-                    stroke="#adc6ff"
+                    stroke="var(--color-primary)"
                     strokeWidth="2"
                     filter="url(#neon-glow)"
                     opacity="0.6"
@@ -142,13 +142,13 @@ export default function Canvas({
                   <path
                     d={pathD}
                     fill="none"
-                    stroke="#d0bcff"
+                    stroke="var(--color-secondary)"
                     strokeWidth="1.5"
                     strokeDasharray="4 4"
                     opacity="0.4"
                   />
                   {/* Moving pulse dot indicating active workflow connection */}
-                  <circle r="4" fill="#adc6ff" className="drop-shadow-[0_0_6px_#adc6ff]">
+                  <circle r="4" fill="var(--color-primary)" style={{ filter: 'drop-shadow(0 0 6px var(--color-primary))' }}>
                     <animateMotion dur="2.5s" repeatCount="indefinite" path={pathD} />
                   </circle>
                 </g>

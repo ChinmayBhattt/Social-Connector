@@ -215,7 +215,7 @@ function PlatformCard({ platform }: { platform: PlatformContent }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    let textToCopy = platform.content;
+    let textToCopy = platform.content || '';
     if (platform.caption) {
       textToCopy += `\n\n${platform.caption}`;
     }
@@ -231,7 +231,7 @@ function PlatformCard({ platform }: { platform: PlatformContent }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const charCount = platform.charCount ?? platform.content.length;
+  const charCount = platform.charCount ?? (platform.content ? platform.content.length : 0);
   const isOverLimit = platform.charLimit ? charCount > platform.charLimit : false;
   const isNearLimit = platform.charLimit ? charCount > platform.charLimit - 40 : false;
   

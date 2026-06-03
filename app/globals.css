@@ -1,5 +1,12 @@
-
 @import "tailwindcss";
+
+:root {
+  --canvas-grid: rgba(255, 255, 255, 0.07);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-elevated-bg: rgba(255, 255, 255, 0.08);
+  --glass-elevated-border: rgba(255, 255, 255, 0.12);
+}
 
 /* ===== Tailwind v4 Theme Extension ===== */
 @theme {
@@ -110,6 +117,47 @@
   }
 }
 
+/* Light theme overrides */
+html.light {
+  color-scheme: light;
+  --color-background: #F4F6F9;
+  --color-on-background: #1A1C1E;
+  --color-surface: #FFFFFF;
+  --color-surface-dim: #EDEFF3;
+  --color-surface-bright: #FFFFFF;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #F8FAFD;
+  --color-surface-container: #F1F4F9;
+  --color-surface-container-high: #E7EBF2;
+  --color-surface-container-highest: #DCE2EC;
+  --color-on-surface: #1A1C1E;
+  --color-on-surface-variant: #43474E;
+  --color-inverse-surface: #2F3033;
+  --color-inverse-on-surface: #F1F0F4;
+  --color-outline: #73777F;
+  --color-outline-variant: #C3C6CF;
+  --color-surface-tint: #005FAF;
+  --color-primary: #005FAF;
+  --color-on-primary: #FFFFFF;
+  --color-primary-container: #D5E3FF;
+  --color-on-primary-container: #001C3B;
+  --color-secondary: #565F71;
+  --color-on-secondary: #FFFFFF;
+  --color-secondary-container: #DAE2F9;
+  --color-on-secondary-container: #131C2C;
+  --color-tertiary: #705574;
+  --color-on-tertiary: #FFFFFF;
+  --color-tertiary-container: #FAD7FD;
+  --color-on-tertiary-container: #29132E;
+  --color-surface-variant: #E1E2EC;
+  
+  --canvas-grid: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-elevated-bg: rgba(255, 255, 255, 0.85);
+  --glass-elevated-border: rgba(0, 0, 0, 0.1);
+}
+
 /* ===== Base Styles ===== */
 * {
   box-sizing: border-box;
@@ -120,7 +168,7 @@ html {
 }
 
 body {
-  background-color: #0B0B0B;
+  background-color: var(--color-background);
   color: var(--color-on-surface);
   font-family: var(--font-body);
   overflow: hidden;
@@ -130,24 +178,24 @@ body {
 
 /* ===== Canvas Background ===== */
 .canvas-bg {
-  background-color: #0B0B0B;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-color: var(--color-background);
+  background-image: radial-gradient(var(--canvas-grid) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 /* ===== Glassmorphism ===== */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-elevated {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-elevated-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-elevated-border);
 }
 
 /* ===== Neon Glow ===== */

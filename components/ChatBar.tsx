@@ -18,6 +18,8 @@ export default function ChatBar({
 }: ChatBarProps) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
@@ -74,14 +76,39 @@ export default function ChatBar({
     }
   }, [isListening]);
 
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+    }
+  }, []);
+
+  const removeAttachedFile = useCallback(() => {
+    setAttachedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
   const handleSubmit = useCallback(
     (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (!input.trim() || isStreaming) return;
-      onSend(input.trim());
+      if ((!input.trim() && !attachedFile) || isStreaming) return;
+      
+      let finalPrompt = input.trim();
+      if (attachedFile) {
+        finalPrompt = `${finalPrompt} [Attached File: ${attachedFile.name}]`.trim();
+      }
+
+      onSend(finalPrompt);
       setInput('');
+      setAttachedFile(null);
     },
-    [input, isStreaming, onSend]
+    [input, attachedFile, isStreaming, onSend]
   );
 
   const handleKeyDown = useCallback(
@@ -116,10 +143,16 @@ export default function ChatBar({
     >
       <form
         onSubmit={handleSubmit}
-        className="glass rounded-full shadow-[0_0_20px_rgba(173,198,255,0.15)] flex items-center gap-4 px-6 py-2 w-full
+        className="glass rounded-full shadow-[0_0_20px_rgba(173,198,255,0.15)] flex items-center gap-2 px-6 py-2 w-full
                    focus-within:shadow-[0_0_30px_rgba(173,198,255,0.25)] transition-shadow duration-300"
       >
-
+        {/* Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+        />
 
         {/* Voice Input (Mic) button */}
         <button
@@ -138,6 +171,33 @@ export default function ChatBar({
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
           )}
         </button>
+
+        {/* File Attach Button */}
+        <button
+          type="button"
+          onClick={handleAttachClick}
+          className="p-2 text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-100 shrink-0"
+          title="Attach File"
+          aria-label="Attach File"
+        >
+          <Icon name="attach_file" />
+        </button>
+
+        {/* File Preview Chip */}
+        {attachedFile && (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs text-on-surface animate-fade-in max-w-[180px] shrink-0">
+            <Icon name="insert_drive_file" size={14} className="text-primary animate-pulse" />
+            <span className="truncate max-w-[100px] font-medium">{attachedFile.name}</span>
+            <button
+              type="button"
+              onClick={removeAttachedFile}
+              className="p-0.5 hover:bg-white/10 rounded-full text-on-surface-variant hover:text-on-surface transition-all shrink-0 flex items-center justify-center"
+              aria-label="Remove File"
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+        )}
 
         {/* Input */}
         <input

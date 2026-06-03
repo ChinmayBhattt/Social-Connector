@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import SideToolbar from '@/components/SideToolbar';
 import Canvas from '@/components/Canvas';
@@ -11,23 +11,66 @@ import AddAssetsPanel from '@/components/AddAssetsPanel';
 import AIResponsePanel from '@/components/AIResponsePanel';
 import ConnectedAppsBar from '@/components/ConnectedAppsBar';
 import ConnectionFlowModal from '@/components/ConnectionFlowModal';
+import Auth from '@/components/Auth';
 import { useCanvas } from '@/hooks/useCanvas';
 import { useChat } from '@/hooks/useChat';
 import { useConnections } from '@/hooks/useConnections';
 import { SOCIAL_PLATFORMS } from '@/lib/platforms';
+import { supabase } from '@/lib/supabase';
 import type { SocialPlatform } from '@/lib/types';
 
 export default function HomePage() {
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Track authentication session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const canvas = useCanvas();
   const chat = useChat();
   const {
     connections,
     connectedPlatformIds,
+    initialized,
     getConnection,
     connectPlatform,
     disconnectPlatform,
     connectWithApiKey,
   } = useConnections();
+
+  const nodesInitializedRef = useRef(false);
+
+  // Initialize canvas nodes from existing active connections on page reload
+  useEffect(() => {
+    if (initialized && !nodesInitializedRef.current) {
+      nodesInitializedRef.current = true;
+      const connected = connections.filter((c) => c.status === 'connected');
+      connected.forEach((conn, index) => {
+        const platform = SOCIAL_PLATFORMS.find((p) => p.id === conn.platformId);
+        if (platform) {
+          const angle = (index * 45) * (Math.PI / 180);
+          const radius = 300;
+          const posX = Math.round(radius * Math.cos(angle));
+          const posY = Math.round(radius * Math.sin(angle));
+          chat.addSocialNode(platform, { x: posX, y: posY });
+        }
+      });
+    }
+  }, [initialized, connections, chat]);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -170,6 +213,21 @@ export default function HomePage() {
   const connectedAs = modalConnection?.connectedAs;
   const maskedCredential = modalConnection?.maskedCredential;
   const errorMessage = modalConnection?.errorMessage;
+
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background canvas-bg z-[100]">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <span className="w-8 h-8 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+          <span className="text-xs text-on-surface-variant/60 font-semibold tracking-wider uppercase">Loading Workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <>
