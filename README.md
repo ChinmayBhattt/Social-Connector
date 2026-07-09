@@ -1,5 +1,5 @@
 # 🌐 Social Connector   
- 
+  
 **Social Connector** is a modern, responsive, and user-friendly platform that brings all your social media profiles together in one place. Instead of sharing multiple links across different platforms, users can create a single personalized page containing all their important social accounts, making networking and online presence management simple and efficient.
 
 Designed with a clean UI and seamless user experience, the project focuses on speed, accessibility, and mobile responsiveness. Whether you're a developer, content creator, freelancer, entrepreneur, or student, Social Connector helps you showcase your digital identity through one customizable profile.
